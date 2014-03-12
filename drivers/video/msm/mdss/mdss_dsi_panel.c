@@ -601,6 +601,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+	mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_ON, NULL);
+
 	if (ctrl->partial_mode_enabled) {
 		/* If we're doing partial display, we need to turn on the
 		   regulators once since we don't enable and disable during
@@ -689,6 +691,7 @@ disable_regs:
 	}
 
 	lcd_notifier_call_chain(LCD_EVENT_OFF_END);
+	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_OFF, NULL);
 
 	pr_info("%s-:\n", __func__);
 
