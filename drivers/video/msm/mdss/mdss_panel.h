@@ -304,6 +304,7 @@ struct mdss_panel_info {
 
 	u32 cont_splash_enabled;
 	bool cont_splash_skip_ov_handoff;
+	u32 cont_splash_feature_on;
 	u32 partial_update_enabled;
 	struct ion_handle *splash_ihdl;
 	u32 panel_power_on;
