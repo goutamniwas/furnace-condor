@@ -27,6 +27,7 @@
 
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
+#include <linux/lcd_notify.h>
 #include <mach/mmi_panel_notifier.h>
 
 #include "mdss_dsi.h"
@@ -592,6 +593,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+	lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
+
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
@@ -629,6 +632,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		mdss_set_tx_power_mode(DSI_MODE_BIT_HS, pdata);
 #endif
 end:
+	lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
+
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
 	return 0;
@@ -647,6 +652,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
+
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
@@ -661,6 +668,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 disable_regs:
 	mdss_dsi_panel_reset(pdata, 0);
 	mdss_dsi_panel_regulator_on(pdata, 0);
+
+	lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
 
 	pr_info("%s-:\n", __func__);
 
