@@ -22,6 +22,7 @@ delete_recursive("/system/lib/modules");
 ui_print("Installing new modules...");
 package_extract_dir("system", "/system");
 set_perm_recursive(0, 0, 0755, 0644, "/system/lib/modules");
+symlink("/system/lib/modules/pronto/pronto_wlan.ko", "/system/lib/modules/wlan.ko");
 set_perm(0, 0, 0755, "/system/etc/install-recovery-2.sh");
 unmount("/system");
 ui_print("Done!");
