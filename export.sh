@@ -7,15 +7,15 @@ export ARCH=arm
 if [ "$1" == "local" ]; then
 	echo "Local Build"
 	build=/home/savoca/Documents/Kernel/build_output
-	export CROSS_COMPILE=/home/savoca/Documents/Linaro/android-toolchain-eabi-4.7/bin/arm-eabi-
+	export CROSS_COMPILE=/home/savoca/Documents/Linaro/android-toolchain-eabi-4.9/bin/arm-eabi-
 else
 	echo "Remote Build"
-	build=/home/savoca/downloads/furnace/condor/aosp
-	export CROSS_COMPILE=/home/savoca/storage/toolchains/android-toolchain-eabi-4.7/bin/arm-eabi-
+	build=/home/savoca/downloads/furnace/condor
+	export CROSS_COMPILE=/home/savoca/storage/toolchains/android-toolchain-eabi-4.9/bin/arm-eabi-
 fi
 kernel="furnace"
 version="1.0.4"
-rom="aosp"
+rom="stock"
 variant="condor"
 config="furnace_defconfig"
 kerneltype="zImage"
