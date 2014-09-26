@@ -28,7 +28,6 @@ function cleanme {
 	rm -rf ozip/kernel/zImage
 	rm -rf ozip/kernel/dt.img
 	rm -rf arch/arm/boot/"$kerneltype"
-	mkdir -p ozip/system/lib/modules
 	make clean && make mrproper
 	echo "Working directory cleaned..."
 }
@@ -65,15 +64,6 @@ if [ -f arch/arm/boot/"$kerneltype" ]; then
 	rm -rf ozip/system
 	mkdir -p ozip/system/etc
 	cp scripts/furnace/install-recovery-2.sh ozip/system/etc/
-	mkdir -p ozip/system/lib/modules
-	find . -name "*.ko" -exec cp {} ozip/system/lib/modules \;
-	echo "Doing $variant specific module changes!"
-	if [ -f ozip/system/lib/modules/wlan.ko ]; then
-		mkdir ozip/system/lib/modules/pronto
-		mv ozip/system/lib/modules/wlan.ko ozip/system/lib/modules/pronto/pronto_wlan.ko
-	else
-		echo "wlan.ko not found!"
-	fi
 else
 	echo "Nothing has been made..."
 	read -p "Clean working directory..(y/n)? : " achoice
