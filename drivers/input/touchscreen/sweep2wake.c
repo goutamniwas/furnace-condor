@@ -31,6 +31,8 @@
 #include <linux/input.h>
 #ifdef CONFIG_POWERSUSPEND
 #include <linux/powersuspend.h>
+#else
+#include <linux/lcd_notify.h>
 #endif
 #include <linux/hrtimer.h>
 
@@ -93,6 +95,9 @@ static int touch_x = 0, touch_y = 0;
 static bool touch_x_called = false, touch_y_called = false;
 static bool scr_suspended = false, exec_count = true;
 static bool scr_on_touch = false, barrier[2] = {false, false};
+#ifndef CONFIG_POWERSUSPEND
+static struct notifier_block s2w_lcd_notif;
+#endif
 static struct input_dev * sweep2wake_pwrdev;
 static DEFINE_MUTEX(pwrkeyworklock);
 static struct workqueue_struct *s2w_input_wq;
@@ -333,6 +338,23 @@ static struct power_suspend s2w_power_suspend_handler = {
 	.suspend = s2w_power_suspend,
 	.resume = s2w_power_resume,
 };
+#else
+static int lcd_notifier_callback(struct notifier_block *this,
+								unsigned long event, void *data)
+{
+	switch (event) {
+	case LCD_EVENT_ON_END:
+		scr_suspended = false;
+		break;
+	case LCD_EVENT_OFF_END:
+		scr_suspended = true;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
 #endif
 
 /*
@@ -421,6 +443,11 @@ static int __init sweep2wake_init(void)
 
 #ifdef CONFIG_POWERSUSPEND
 	register_power_suspend(&s2w_power_suspend_handler);
+#else
+	s2w_lcd_notif.notifier_call = lcd_notifier_callback;
+	if (lcd_register_client(&s2w_lcd_notif) != 0) {
+		pr_err("%s: Failed to register lcd callback\n", __func__);
+	}
 #endif
 
 #ifndef ANDROID_TOUCH_DECLARED
@@ -450,6 +477,9 @@ static void __exit sweep2wake_exit(void)
 {
 #ifndef ANDROID_TOUCH_DECLARED
 	kobject_del(android_touch_kobj);
+#endif
+#ifndef CONFIG_POWERSUSPEND
+	lcd_unregister_client(&s2w_lcd_notif);
 #endif
 	input_unregister_handler(&s2w_input_handler);
 	destroy_workqueue(s2w_input_wq);
