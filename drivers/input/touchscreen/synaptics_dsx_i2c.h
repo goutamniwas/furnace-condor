@@ -222,6 +222,9 @@ struct synaptics_rmi4_device_info {
  * @sensor_max_x: sensor maximum x value
  * @sensor_max_y: sensor maximum y value
  * @irq_enabled: flag for indicating interrupt enable status
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+ * @prevent_sleep: flag to stop suspend state
+#endif
  * @touch_stopped: flag to stop interrupt thread processing
  * @fingers_on_2d: flag to indicate presence of fingers in 2d area
  * @sensor_sleep: flag to indicate sleep state of sensor
@@ -269,6 +272,9 @@ struct synaptics_rmi4_data {
 	int sensor_max_y;
 	int normal_mode;
 	bool irq_enabled;
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	bool prevent_sleep;
+#endif
 	bool touch_stopped;
 	bool fingers_on_2d;
 	bool sensor_sleep;
@@ -316,6 +322,7 @@ struct f34_properties {
 #define SYNAPTICS_DSX_STATES { \
 	DSX(UNKNOWN), \
 	DSX(ACTIVE), \
+	DSX(PREVENT_SLEEP), \
 	DSX(STANDBY), \
 	DSX(SUSPEND), \
 	DSX(BL), \
