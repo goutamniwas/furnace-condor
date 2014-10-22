@@ -50,11 +50,6 @@ MODULE_DESCRIPTION(DRIVER_DESCRIPTION);
 MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPLv2");
 
-/* Tuneables */
-#define S2W_DEBUG		0
-#define S2W_DEFAULT		0
-#define S2W_PWRKEY_DUR          60
-
 #ifdef CONFIG_MACH_MSM8974_HAMMERHEAD
 /* Hammerhead aka Nexus 5 */
 #define S2W_Y_MAX               1920
@@ -88,9 +83,10 @@ MODULE_LICENSE("GPLv2");
 #define S2W_X_FINAL				130
 #endif
 
-
 /* Resources */
-int s2w_switch = S2W_DEFAULT;
+int s2w_switch = 0;
+static int s2w_debug = 0;
+static int s2w_pwrkey_dur = 60;
 static int touch_x = 0, touch_y = 0;
 static bool touch_x_called = false, touch_y_called = false;
 static bool scr_suspended = false, exec_count = true;
@@ -128,10 +124,10 @@ static void sweep2wake_presspwr(struct work_struct * sweep2wake_presspwr_work) {
                 return;
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 1);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(S2W_PWRKEY_DUR);
+	msleep(s2w_pwrkey_dur);
 	input_event(sweep2wake_pwrdev, EV_KEY, KEY_POWER, 0);
 	input_event(sweep2wake_pwrdev, EV_SYN, 0, 0);
-	msleep(S2W_PWRKEY_DUR);
+	msleep(s2w_pwrkey_dur);
         mutex_unlock(&pwrkeyworklock);
 	return;
 }
@@ -152,16 +148,15 @@ static void sweep2wake_reset(void) {
 }
 
 /* Sweep2wake main function */
-static void detect_sweep2wake(int x, int y, bool st)
+static void detect_sweep2wake(int x, int y)
 {
-        int prevx = 0, nextx = 0;
-        bool single_touch = st;
-#if S2W_DEBUG
-        pr_info(LOGTAG"x,y(%4d,%4d) single:%s\n",
-                x, y, (single_touch) ? "true" : "false");
-#endif
+	int prevx = 0, nextx = 0;
+
+	if (s2w_debug)
+		pr_info(LOGTAG"x: %d, y: %d\n", x, y);
+
 	//left->right
-	if ((single_touch) && (scr_suspended == true) && (s2w_switch == 1)) {
+	if (scr_suspended == true) {
 		prevx = 0;
 		nextx = S2W_X_B1;
 		if ((barrier[0] == true) ||
@@ -190,7 +185,7 @@ static void detect_sweep2wake(int x, int y, bool st)
 			}
 		}
 	//right->left
-	} else if ((single_touch) && (scr_suspended == false) && (s2w_switch > 0)) {
+	} else if ((scr_suspended == false) && (s2w_switch > 0)) {
 		scr_on_touch=true;
 		prevx = (S2W_X_MAX - S2W_X_FINAL);
 		nextx = S2W_X_B2;
@@ -224,20 +219,18 @@ static void detect_sweep2wake(int x, int y, bool st)
 
 static void s2w_input_callback(struct work_struct *unused) {
 
-	detect_sweep2wake(touch_x, touch_y, true);
+	if (s2w_switch)
+		detect_sweep2wake(touch_x, touch_y);
 
 	return;
 }
 
 static void s2w_input_event(struct input_handle *handle, unsigned int type,
-				unsigned int code, int value) {
-#if S2W_DEBUG
-	pr_info("sweep2wake: code: %s|%u, val: %i\n",
-		((code==ABS_MT_POSITION_X) ? "X" :
-		(code==ABS_MT_POSITION_Y) ? "Y" :
-		(code==ABS_MT_TRACKING_ID) ? "ID" :
-		"undef"), code, value);
-#endif
+				unsigned int code, int value)
+{
+	if ((!s2w_switch) || ((scr_suspended) && (s2w_switch > 1)))
+		return;
+
 	if (code == ABS_MT_SLOT) {
 		sweep2wake_reset();
 		return;
@@ -383,6 +376,54 @@ static ssize_t s2w_sweep2wake_dump(struct device *dev,
 static DEVICE_ATTR(sweep2wake, (S_IWUSR|S_IRUGO),
 	s2w_sweep2wake_show, s2w_sweep2wake_dump);
 
+static ssize_t s2w_debug_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", s2w_debug);
+}
+
+static ssize_t s2w_debug_dump(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	if (buf[0] >= '0' && buf[0] <= '1' && buf[1] == '\n')
+		if (s2w_debug != buf[0] - '0')
+			s2w_debug = buf[0] - '0';
+
+	return count;
+}
+
+static DEVICE_ATTR(sweep2wake_debug, (S_IWUSR|S_IRUGO),
+	s2w_debug_show, s2w_debug_dump);
+
+static ssize_t s2w_pwrkey_dur_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", s2w_pwrkey_dur);
+}
+
+static ssize_t s2w_pwrkey_dur_dump(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int val, err;
+
+	err = kstrtoint(buf, 0, &val);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Failed to convert value.\n", __func__);
+		return -EINVAL;
+	}
+
+	if ((!val) || (val > 3000)) {
+		printk(KERN_ERR "%s: value is out of range.\n", __func__);
+		return -EINVAL;
+	} else
+		s2w_pwrkey_dur = val;
+
+	return count;
+}
+
+static DEVICE_ATTR(sweep2wake_pwrkey_dur, (S_IWUSR|S_IRUGO),
+	s2w_pwrkey_dur_show, s2w_pwrkey_dur_dump);
+
 static ssize_t s2w_version_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -393,14 +434,8 @@ static ssize_t s2w_version_show(struct device *dev,
 	return count;
 }
 
-static ssize_t s2w_version_dump(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	return count;
-}
-
 static DEVICE_ATTR(sweep2wake_version, (S_IWUSR|S_IRUGO),
-	s2w_version_show, s2w_version_dump);
+	s2w_version_show, NULL);
 
 /*
  * INIT / EXIT stuff below here
@@ -459,6 +494,14 @@ static int __init sweep2wake_init(void)
 	rc = sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
 	if (rc) {
 		pr_warn("%s: sysfs_create_file failed for sweep2wake\n", __func__);
+	}
+	rc = sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake_debug.attr);
+	if (rc) {
+		pr_warn("%s: sysfs_create_file failed for sweep2wake_debug\n", __func__);
+	}
+	rc = sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake_pwrkey_dur.attr);
+	if (rc) {
+		pr_warn("%s: sysfs_create_file failed for sweep2wake_pwrkey_dur\n", __func__);
 	}
 	rc = sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake_version.attr);
 	if (rc) {
