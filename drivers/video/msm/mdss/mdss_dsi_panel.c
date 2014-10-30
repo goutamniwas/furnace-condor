@@ -1711,7 +1711,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	/* Since the cont_splash_enabled flag gets cleared when continuous
 	   splash is done, copy it here for later use so we can know if we
 	   ever did continuous splash */
-	pinfo->cont_splash_feature_on = pinfo->cont_splash_enabled;
+	ctrl_pdata->panel_data.panel_info.cont_splash_feature_on =
+		ctrl_pdata->panel_data.panel_info.cont_splash_enabled;
+
 	ctrl_pdata->partial_mode_enabled = of_property_read_bool(node,
 						"mmi,partial-mode-enabled");
 	pr_debug("%s: MMI partial mode %s", __func__,
