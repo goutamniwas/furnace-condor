@@ -572,6 +572,7 @@ end:
 
 static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
 {
+	lcd_notifier_call_chain(LCD_EVENT_ON_END);
 	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 
 #ifndef CONFIG_FB_MSM_MDSS_MDP3
@@ -593,14 +594,13 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
-	lcd_notifier_call_chain(LCD_EVENT_ON_START);
-
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
+	lcd_notifier_call_chain(LCD_EVENT_ON_START);
 	mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_ON, NULL);
 
 	if (ctrl->partial_mode_enabled) {
@@ -623,6 +623,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	if (ctrl->panel_config.bare_board == true) {
+		lcd_notifier_call_chain(LCD_EVENT_ON_END);
 		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 		pr_warn("%s: This is bare_board configuration\n", __func__);
 		goto end;
@@ -634,6 +635,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	/* Send display on notification.  This will need to be revisited once
 	   we implement command mode support the way we want, since display
 	   may not be made visible to user until a point later than this */
+	lcd_notifier_call_chain(LCD_EVENT_ON_END);
 	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
@@ -649,8 +651,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		mdss_set_tx_power_mode(DSI_MODE_BIT_HS, pdata);
 #endif
 end:
-	lcd_notifier_call_chain(LCD_EVENT_ON_END);
-
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
 	return 0;
@@ -669,11 +669,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	lcd_notifier_call_chain(LCD_EVENT_OFF_START);
-
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
+	lcd_notifier_call_chain(LCD_EVENT_OFF_START);
 	mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_OFF, NULL);
 
 	if (ctrl->panel_config.bare_board == true)
