@@ -1062,6 +1062,9 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 	switch (state) {
 	case STATE_UNKNOWN:
 	case STATE_FLASH:
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	case STATE_PREVENT_SLEEP:
+#endif
 		/* no special handling for these states */
 			break;
 
@@ -1086,15 +1089,6 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		synaptics_rmi4_irq_enable(rmi4_data, true);
 			break;
 
-#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-	case STATE_PREVENT_SLEEP:
-		if (rmi4_data->prevent_sleep) {
-			synaptics_dsx_wait_for_idle(rmi4_data);
-			synaptics_rmi4_irq_enable(rmi4_data, false);
-		}
-		break;
-#endif
-			
 	case STATE_STANDBY:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
 		/* put sensor to sleep to ensure the same */
@@ -1332,7 +1326,6 @@ static ssize_t synaptics_rmi4_prevent_sleep_show(struct device *dev,
 			rmi4_data->prevent_sleep ? "ENABLED" : "DISABLED");
 }
 #endif
-	
 
 static ssize_t synaptics_rmi4_0dbutton_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -2167,16 +2160,6 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 			rmi4_data->board;
 
 	if (enable) {
-#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-		if (rmi4_data->prevent_sleep) {
-
-			irq_set_irq_wake(rmi4_data->irq, 0);
-
-			pr_info("rmi4_data->irq wake disabled\n");
-
-			return retval;
-		}
-#endif
 		if (rmi4_data->irq_enabled)
 			return retval;
 
@@ -2203,15 +2186,6 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 
 		rmi4_data->irq_enabled = true;
 	} else {
-#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-		if (rmi4_data->prevent_sleep) {
-			irq_set_irq_wake(rmi4_data->irq, 1);
-
-			pr_info("rmi4_data->irq wake enabled\n");
-
-			return retval;
-		}
-#endif
 		if (rmi4_data->irq_enabled) {
 			disable_irq(rmi4_data->irq);
 			free_irq(rmi4_data->irq, rmi4_data);
@@ -3754,10 +3728,10 @@ static int synaptics_rmi4_suspend(struct device *dev)
 #elif defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE) &&	!defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
 	if (dt2w_switch > 0) {
 #endif
-		pr_info("suspend avoided!\n");
-
 		rmi4_data->prevent_sleep = true;
 		synaptics_dsx_sensor_state(rmi4_data, STATE_PREVENT_SLEEP);
+
+		enable_irq_wake(rmi4_data->irq);
 
 		return 0;
 	}
@@ -3801,17 +3775,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 static int synaptics_rmi4_resume(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-
-#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
-	if (rmi4_data->prevent_sleep) {
-		pr_info("resume avoided!\n");
-
-		synaptics_dsx_sensor_state(rmi4_data, STATE_ACTIVE);
-		rmi4_data->prevent_sleep = false;
-
-		return 0;
-	}
-#endif
 
 	synaptics_dsx_resumeinfo_start(rmi4_data);
 
@@ -3863,6 +3826,13 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	synaptics_dsx_resumeinfo_finish(rmi4_data);
+
+#ifdef CONFIG_TOUCHSCREEN_PREVENT_SLEEP
+	if (rmi4_data->prevent_sleep) {
+		disable_irq_wake(rmi4_data->irq);
+		rmi4_data->prevent_sleep = false;
+	}
+#endif
 
 	return 0;
 }
