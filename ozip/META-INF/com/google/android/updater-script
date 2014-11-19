@@ -1,2 +1,2 @@
-ui_print("Furnace Kernel for Moto G 2nd Generation");
+ui_print("Furnace Kernel for Moto E");
 package_extract_file("boot.img", "/dev/block/platform/msm_sdcc.1/by-name/boot");
