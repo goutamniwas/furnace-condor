@@ -3337,7 +3337,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
-	synaptics_dsx_sensor_ready_state(rmi4_data, false);
+	synaptics_dsx_sensor_ready_state(rmi4_data, true);
 
 	mutex_lock(&exp_fn_ctrl_mutex);
 	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
