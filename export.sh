@@ -15,7 +15,7 @@ else
 fi
 kernel="furnace"
 version="1.2.0"
-rom="stock"
+rom="aosp"
 variant="condor"
 config="furnace_defconfig"
 kerneltype="zImage"
